@@ -1,248 +1,242 @@
-﻿#include <iostream>
+﻿
 #include <cassert>
-#include <initializer_list>
+#include <chrono>
+#include <random>
+#include "fast_hash_map.h"
+#include "flat_hash_map.hpp"
 
-template <typename Key, typename Value, typename Hash = std::hash<Key>>
-class fast_hash_map
+void functional_test()
 {
-    struct node
+    fast_hash_map<int, std::string> map;
+
+    // Тест вставки и доступа
+    map.insert({ 1, "one" });
+    map.insert({ 2, "two" });
+    assert(map.contains(1) == true);
+    assert(map.contains(2) == true);
+    assert(map[1] == "one");
+    assert(map[2] == "two");
+
+    // Тест обновления значения
+    map[1] = "uno";
+    assert(map[1] == "uno");
+
+    // Тест удаления
+    map.erase(1);
+    assert(map.contains(1) == false);
+    assert(map.size() == 1); // должно остаться 1 элемент
+
+    // Тест очистки
+    map.clear();
+    assert(map.size() == 0);
+    assert(map.contains(2) == false);
+
+    // Тест коллизий
+    map.insert({ 3, "three" });
+    map.insert({ 10, "ten" }); // Предположим, что 3 и 10 имеют одинаковый хэш
+    assert(map.contains(3) == true);
+    assert(map.contains(10) == true);
+    assert(map[3] == "three");
+    assert(map[10] == "ten");
+
+    // Тест повторного удаления
+    map.erase(10);
+    assert(map.contains(10) == false);
+    assert(map.size() == 1); // должно остаться 1 элемент
+
+    for (int i = 0; i < 100; ++i)
     {
-        bool free_ = true;
-        std::pair<Key, Value> element_;
-    };
+        map[i] = "hjbhbhbh";
+    }
 
-public:
-    fast_hash_map() : size_(0), capacity_(7), arr_(new node[7]{}) {}
+    fast_hash_map<int, std::string> map2(map);
 
-    explicit fast_hash_map(const int capacity) : size_(0), capacity_(capacity), arr_(new node[capacity]{}) {}
+    //map.print();
+    //std::cout << "============" << std::endl;
+    //map2.print();
 
-    fast_hash_map(const std::initializer_list<std::pair<Key, Value>>& list) : size_(0), capacity_(list.size() * 2), arr_(new node[capacity_])
-    {
-        for (const auto& element : list)
-        {
-            insert(element);
+    assert(map2 == map);
+
+    fast_hash_map<int, std::string> map3 = std::move(map);
+    assert(map2 == map3);
+    assert(map2 != map);
+
+    //map3.print();
+    //std::cout << map3.size() << " " << map3.capacity() << std::endl;
+
+    fast_hash_map<int, std::string> map4{ {1, "kbbjhb"}, {2,"kmklmkm"}, {4,"knljknjln"} };
+    assert(map4.size() == 3);
+    assert(map4.capacity() == 7);
+    //map4.print();
+    //std::cout << map3.size() << " " << map3.capacity() << std::endl;
+
+    std::cout << "Ok" << std::endl << "============" << std::endl;
+}
+
+void test_find()
+{
+
+    fast_hash_map<int, int> myMap;
+    //std::unordered_map<int, int> myMap;
+    //ska::flat_hash_map<int, int> myMap;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 10000000);
+
+    const int maxSize = 1000000;
+
+    int targetSize = 10; // Начальный размер контейнера
+    int incrementSize = 10; // Размер увеличения на каждом шаге   1 / 10
+
+    // Изначально добавляем 10 элементов
+    while (myMap.size() < targetSize) {
+        //int randomNumber = abs(dis(gen) * dis(gen));
+        int randomNumber = dis(gen);
+        myMap[randomNumber] = 0; // Значение может быть любым, здесь 0
+    }
+
+    while (targetSize <= maxSize) {
+        // Запоминаем одно из сгенерированных чисел
+        //int keyToFind = std::next(myMap.begin(), dis(gen) % myMap.size())->first;
+
+        // Измерение времени выполнения 1000000 операций поиска
+        auto start = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < 1000000; ++i) {
+            myMap.contains(i);
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+
+        // Вычисление времени одной операции поиска
+        std::chrono::duration<double, std::nano> duration = end - start;
+        double timePerOperation = duration.count() / 1000000; // Время на одну операцию в наносекундах
+
+        // Вывод результата
+        std::cout << targetSize << " - " << timePerOperation << " ns" << std::endl;
+
+        if (targetSize == maxSize) // 10000000
+            return;
+
+        // Увеличение размера контейнера
+        if (targetSize == incrementSize * 10) // 100 / 10
+            incrementSize *= 10;
+
+        // Увеличиваем targetSize на incrementSize
+        targetSize += incrementSize;
+
+        // Добавляем новые случайные числа в unordered_map
+        while (myMap.size() < targetSize) {
+            //int number = abs(dis(gen) * dis(gen));
+            int number = dis(gen);
+            myMap[number] = 0; // Значение может быть любым, здесь 0
         }
     }
+    std::cout << "============" << std::endl;
+}
 
-    fast_hash_map(const fast_hash_map& other) : size_(0), capacity_(other.capacity_), arr_(new node[capacity_])
-    {
-        for (int i = 0; i < capacity_; ++i)
-        {
-            if (!other.arr_[i].free_)
-                insert(other.arr_[i].element_);
+void test_insert()
+{
+    fast_hash_map<int, int> myMap;
+    //std::unordered_map<int, int> myMap;
+    //ska::flat_hash_map<int, int> myMap;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 10000000);
+
+    const int maxSize = 1000000;
+
+    int targetSize = 10;
+    int incrementSize = 10; // Размер увеличения на каждом шаге   1 / 10
+
+    while (targetSize <= maxSize) {
+        auto start = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < targetSize; ++i) {
+            int number = dis(gen);
+            //myMap[number] = 0;
+            myMap.insert({ number, 0 });
         }
+        auto end = std::chrono::high_resolution_clock::now();
+
+        // Вычисление времени одной операции поиска
+        std::chrono::duration<double, std::nano> duration = end - start;
+        double timePerOperation = duration.count() / targetSize; // Время на одну операцию в наносекундах
+
+        // Вывод результата
+        std::cout << targetSize << " - " << timePerOperation << " ns" << std::endl;
+
+        if (targetSize == maxSize) // 1000000
+            return;
+
+        // Увеличение размера контейнера
+        if (targetSize == incrementSize * 10) // 100 / 10
+            incrementSize *= 10;
+
+        // Увеличиваем targetSize на incrementSize
+        targetSize += incrementSize;
+
+        myMap.clear();
+    }
+    std::cout << "============" << std::endl;
+}
+
+void test_erase()
+{
+    fast_hash_map<int, int> myMap;
+    //std::unordered_map<int, int> myMap;
+    //ska::flat_hash_map<int, int> myMap;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 10000000);
+
+    const int maxSize = 1000000;
+
+    std::vector<int> elements(maxSize);
+
+    for (int i = 0; i < maxSize; ++i)
+    {
+        elements[i] = dis(gen);
     }
 
+    int targetSize = 10;
+    int incrementSize = 10; // Размер увеличения на каждом шаге   1 / 10
 
-    fast_hash_map& operator=(const fast_hash_map& other)
-    {
-        if (&other != this)
-        {
-            clear();
-            for (int i = 0; i < other.capacity_; ++i)
-            {
-                if (!other.arr_[i].free_)
-                    insert(other.arr_[i].element_);
-            }
+    while (targetSize <= maxSize) {
+
+        for (int i = 0; i < targetSize; ++i) {
+            myMap[elements[i]] = 0;
         }
-        return *this;
-    }
 
-    fast_hash_map(fast_hash_map&& other) : size_(other.size_), capacity_(other.capacity_), arr_(other.arr_)
-    {
-        other.size_ = 0;
-        other.capacity_ = 7;
-        other.arr_ = new node[other.capacity_];
-    }
-
-    fast_hash_map& operator=(fast_hash_map&& other)
-    {
-        if (&other != this) {
-            size_ = other.size_;
-            capacity_ = other.capacity_;
-            delete[] arr_;
-            arr_ = other.arr_;
-            other.size_ = 0;
-            other.capacity_ = 7;
-            other.arr_ = new node[other.capacity_];
+        auto start = std::chrono::high_resolution_clock::now();
+        for (int i = 0; i < targetSize; ++i) {
+            myMap.erase(elements[i]);
         }
-        return *this;
+        auto end = std::chrono::high_resolution_clock::now();
+
+        // Вычисление времени одной операции поиска
+        std::chrono::duration<double, std::nano> duration = end - start;
+        double timePerOperation = duration.count() / targetSize; // Время на одну операцию в наносекундах
+
+        // Вывод результата
+        std::cout << targetSize << " - " << timePerOperation << " ns" << std::endl;
+
+        if (targetSize == maxSize) // 1000000
+            return;
+
+        // Увеличение размера контейнера
+        if (targetSize == incrementSize * 10) // 100 / 10
+            incrementSize *= 10;
+
+        // Увеличиваем targetSize на incrementSize
+        targetSize += incrementSize;
+
+        myMap.clear();
     }
-
-    void insert(const std::pair<Key, Value>& new_element)
-    {
-        check_capacity();
-        arr_[get_index(new_element.first)] = { false, new_element };
-        size_++;
-    }
-
-    void erase(const Key& key)
-    {
-        node& ref = arr_[get_index(key)];
-        if (!ref.free_)
-        {
-            ref.free_ = true;
-            size_--;
-        }
-    }
-
-    bool contains(const Key& key) const
-    {
-        return arr_[get_index(key)].free_ == false;
-    }
-
-    Value& operator[](const Key& key)
-    {
-        node* ptr = arr_ + get_index(key);
-
-        if (ptr->free_)
-        {
-            if (check_capacity())
-                ptr = arr_ + get_index(key);
-
-            *ptr = { false, {key, Value{}} };
-            size_++;
-        }
-        return ptr->element_.second;
-    }
-
-    const Value& at(const Key& key) const
-    {
-        node* ptr = arr_ + get_index(key);
-
-        if (ptr->free_)
-            throw std::out_of_range("element not found");
-
-        return ptr->element_.second;
-    }
-
-    int size() const
-    {
-        return size_;
-    }
-
-    int capacity() const
-    {
-        return capacity_;
-    }
-
-    bool operator==(const fast_hash_map& right) const
-    {
-        if (right.size_ != size_)
-            return false;
-
-        for (int i = 0; i < capacity_; ++i)
-        {
-            if (!arr_[i].free_)
-            {
-                auto& element = arr_[i].element_;
-                if (!right.contains(element.first) || right.at(element.first) != element.second)
-                    return false;
-            }
-        }
-        return true;
-    }
-
-    bool operator!=(const fast_hash_map& right) const
-    {
-        return !(*this == right);
-    }
-
-    void print() const
-    {
-        for (int i = 0; i < capacity_; ++i)
-        {
-            if (!arr_[i].free_)
-                std::cout << arr_[i].element_.first << " " << arr_[i].element_.second << std::endl;
-            else
-                std::cout << "- // - " << std::endl;
-        }
-        std::cout << std::endl;
-    }
-
-    void clear()
-    {
-        for (int i = 0; i < capacity_; ++i)
-        {
-            arr_[i].free_ = true;
-        }
-        size_ = 0;
-    }
-
-    ~fast_hash_map()
-    {
-        delete[] arr_;
-    }
-
-private:
-
-    int get_index(const Key& key) const
-    {
-        int start_index = hash_function_(key) % capacity_;
-
-        if (arr_[start_index].free_ || arr_[start_index].element_.first == key)
-        {
-            return start_index;
-        }
-        else
-        {
-            int index = start_index < capacity_ - 1 ? start_index + 1 : 0;
-            while (index != start_index)
-            {
-                if (arr_[index].free_ || arr_[index].element_.first == key)
-                    return index;
-                else
-                    index = index < capacity_ - 1 ? index + 1 : 0;
-            }
-        }
-    }
-
-    bool check_capacity()
-    {
-        if (size_ < capacity_ / 2)
-            return false;
-
-        int old_capacity = capacity_;
-        capacity_ *= 2;
-        node* temp = new node[capacity_];
-        for (int i = 0; i < old_capacity; ++i)
-        {
-            if (!arr_[i].free_)
-                temp[get_index(arr_[i].element_.first)] = arr_[i];
-        }
-        delete[] arr_;
-        arr_ = temp;
-        return true;
-    }
-
-    int size_;
-    int capacity_;
-    node* arr_;
-    Hash hash_function_;
-};
+    std::cout << "============" << std::endl;
+}
 
 int main()
 {
-    fast_hash_map<int, int> fhm1;
-    fhm1.insert({ 1,2 });
-    fhm1.insert({ 3,4 });
-    assert(fhm1[1] == 2);
-    fhm1.erase(3);
-    assert(fhm1.contains(1));
-    assert(!fhm1.contains(3));
-
-    fast_hash_map<int, int> fhm2;
-
-    for (int i = 0; i < 10; ++i)
-    {
-        fhm1[i] = i + 30;
-        fhm2[i] = i + 30;
-    }
-
-    fast_hash_map<int, int> fhm3{ {1,3}, {2,4}, {5,8} };
-    fhm3.print();
-
-    fast_hash_map<int, int> fhm4(fhm3);
-    fhm1 = fhm3;
-    assert(fhm1 == fhm4);
+    functional_test();
+    test_find();
+    //test_insert();
+    //test_erase();
 }
