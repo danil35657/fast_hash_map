@@ -241,6 +241,26 @@ private:
     //    return index;
     //}
 
+    // двойное хэширование
+   /* int get_index(const Key& key) const
+    {
+        int index1 = hasher_(key) % capacity_;
+        int index2 = 1 + (hasher_(key) % (capacity_ - 1));
+
+        int index = index1;
+        int i = 0;
+
+        while (arr_[index].status != node::FREE)
+        {
+            if (arr_[index].status == node::OCCUPIED && arr_[index].element_.first == key)
+                return index;
+
+            i++;
+            index = (index1 + i * index2) % capacity_;
+        }
+        return index;
+    }*/
+
     bool check_capacity()
     {
         if (size_ > capacity_ / 2) // убрать операцию деления
