@@ -5,73 +5,20 @@
 #include "fast_hash_map.h"
 #include "flat_hash_map.hpp"
 
-//void functional_test()
-//{
-//    fast_hash_map<int, std::string> map;
-//
-//    // Тест вставки и доступа
-//    map.insert({ 1, "one" });
-//    map.insert({ 2, "two" });
-//    assert(map.contains(1) == true);
-//    assert(map.contains(2) == true);
-//    assert(map[1] == "one");
-//    assert(map[2] == "two");
-//
-//    // Тест обновления значения
-//    map[1] = "uno";
-//    assert(map[1] == "uno");
-//
-//    // Тест удаления
-//    map.erase(1);
-//    assert(map.contains(1) == false);
-//    assert(map.size() == 1); // должно остаться 1 элемент
-//
-//    // Тест очистки
-//    map.clear();
-//    assert(map.size() == 0);
-//    assert(map.contains(2) == false);
-//
-//    // Тест коллизий
-//    map.insert({ 3, "three" });
-//    map.insert({ 10, "ten" }); // Предположим, что 3 и 10 имеют одинаковый хэш
-//    assert(map.contains(3) == true);
-//    assert(map.contains(10) == true);
-//    assert(map[3] == "three");
-//    assert(map[10] == "ten");
-//
-//    // Тест повторного удаления
-//    map.erase(10);
-//    assert(map.contains(10) == false);
-//    assert(map.size() == 1); // должно остаться 1 элемент
-//
-//    for (int i = 0; i < 100; ++i)
-//    {
-//        map[i] = "hjbhbhbh";
-//    }
-//
-//    fast_hash_map<int, std::string> map2(map);
-//
-//    //map.print();
-//    //std::cout << "============" << std::endl;
-//    //map2.print();
-//
-//    assert(map2 == map);
-//
-//    fast_hash_map<int, std::string> map3 = std::move(map);
-//    assert(map2 == map3);
-//    assert(map2 != map);
-//
-//    //map3.print();
-//    //std::cout << map3.size() << " " << map3.capacity() << std::endl;
-//
-//    fast_hash_map<int, std::string> map4{ {1, "kbbjhb"}, {2,"kmklmkm"}, {4,"knljknjln"} };
-//    assert(map4.size() == 3);
-//    assert(map4.capacity() == 7);
-//    //map4.print();
-//    //std::cout << map3.size() << " " << map3.capacity() << std::endl;
-//
-//    std::cout << "Ok" << std::endl << "============" << std::endl;
-//}
+template <typename Container>
+void print(Container& cont)
+{
+   /* for (auto it = cont.begin(); it != cont.end(); ++it)
+    {
+        std::cout << it->first << " " << it->second << std::endl;
+    }*/
+
+    for (auto it : cont)
+    {
+        std::cout << it.first << " " << it.second << std::endl;
+    }
+}
+
 
 void functional_test() {
     using Key = std::string;
@@ -155,6 +102,11 @@ void functional_test() {
     assert(map5 == map6);
     map6.erase("two");
     assert(map5 != map6);
+    auto it = map5.find("two");
+    assert(it->first == "two" && it->second == 2);
+    it = map6.find("two");
+    assert(it == map6.end());
+
 
     // Проверка clear
     map6.clear();
@@ -167,15 +119,17 @@ void functional_test() {
     edge_map.insert({ "key", 2 }); // Обновление значения
     assert(edge_map.size() == 1);
     assert(edge_map.at("key") == 2);
+    
+
+    //print(map5);
 
     std::cout << "All tests passed!" << std::endl;
 }
 
 void test_find()
 {
-
-    //fast_hash_map<int, int> myMap;
-    std::unordered_map<int, int> myMap;
+    fast_hash_map<int, int> myMap;
+    //std::unordered_map<int, int> myMap;
     //ska::flat_hash_map<int, int> myMap;
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -333,8 +287,8 @@ void test_erase()
 
 int main()
 {
-    //functional_test();
-    //test_find();
+    functional_test();
+    test_find();
     //test_insert();
-    test_erase();
+    //test_erase();
 }

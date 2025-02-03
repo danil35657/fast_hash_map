@@ -20,16 +20,113 @@ class fast_hash_map
         std::pair<Key, Value> element_;
     };
 
+    class Iterator
+    {
+    public:
+
+        Iterator(node* new_node, fast_hash_map* map) : node_(new_node), arr_(map->arr_), end_(map->end_) {}
+
+        std::pair<Key, Value>& operator*()
+        {
+            return node_->element_;
+        }
+
+        std::pair<Key, Value>* operator->()
+        {
+            return &node_->element_;
+        }
+
+        Iterator& operator++()
+        {
+            if (node_ == end_)
+                throw std::runtime_error("cannot increment end iterator");
+            
+            do
+            {
+                ++node_;
+            } while (node_ != end_ && node_->status != node::OCCUPIED);
+
+            return *this;
+        }
+
+        Iterator operator++(int)
+        {
+            return ++(*this);
+        }
+
+        Iterator& operator--()
+        {
+            if (node_ == arr_)
+                throw std::runtime_error("cannot decrement begin iterator");
+
+            do
+            {
+                --node;
+            } while (node_ != arr_ && node_->status != node::OCCUPIED);
+
+            if (node_->status != node::OCCUPIED)
+                throw std::runtime_error("cannot decrement begin iterator");
+
+            return *this;
+        }
+
+        Iterator operator--(int)
+        {
+            return --(*this);
+        }
+
+        Iterator operator+(int n) const
+        {
+            Iterator temp(node_, this);
+            while (n)
+            {
+                ++temp;
+                --n;
+            }
+            return temp;
+        }
+
+        Iterator operator-(int n) const
+        {
+            Iterator temp(node_, this);
+            while (n)
+            {
+                --temp;
+                --n;
+            }
+            return temp;
+        }
+
+        bool operator==(Iterator other) const
+        {
+            return node_ == other.node_;
+        }
+
+        bool operator!=(Iterator other) const
+        {
+            return node_ != other.node_;
+        }
+
+    private:
+        node* node_ = nullptr;
+        node* arr_ = nullptr;
+        node* end_ = nullptr;
+    };
+
 public:
-    fast_hash_map() : size_(0), index_(0), capacity_(primes[index_]), arr_(new node[powers_of_two[index_]]{}) {}
+
+    friend class Iterator;
+
+    fast_hash_map() : size_(0), index_(0), capacity_(primes[index_]), arr_(new node[powers_of_two[index_]]{}), end_(arr_ + capacity_) {}
 
     fast_hash_map(const int capacity)
     {
         size_ = 0;
         auto it = std::lower_bound(primes.begin(), primes.end(), capacity);
-        index_ = it == primes.end() ? primes.size() - 1 : std::distance(primes.begin(), it); // проверить
+        index_ = it == primes.end() ? primes.size() - 1 : std::distance(primes.begin(), it);
         capacity_ = primes[index_];
         arr_ = new node[powers_of_two[index_]]{};
+        end_ = arr_ + capacity_;
     }
 
     fast_hash_map(const std::initializer_list<std::pair<Key, Value>>& list)
@@ -39,6 +136,7 @@ public:
         index_ = it == primes.end() ? primes.size() - 1 : std::distance(primes.begin(), it); // проверить
         capacity_ = primes[index_];
         arr_ = new node[powers_of_two[index_]]{};
+        end_ = arr_ + capacity_;
 
         for (const auto& element : list)
         {
@@ -46,7 +144,7 @@ public:
         }
     }
 
-    fast_hash_map(const fast_hash_map& other) : size_(0), index_(other.index_), capacity_(other.capacity_), arr_(new node[powers_of_two[index_]])
+    fast_hash_map(const fast_hash_map& other) : size_(0), index_(other.index_), capacity_(other.capacity_), arr_(new node[powers_of_two[index_]]), end_(arr_ + capacity_)
     {
         for (int i = 0; i < capacity_; ++i)
         {
@@ -69,12 +167,13 @@ public:
         return *this;
     }
 
-    fast_hash_map(fast_hash_map&& other) noexcept : size_(other.size_), index_(other.index_), capacity_(other.capacity_), arr_(other.arr_)
+    fast_hash_map(fast_hash_map&& other) noexcept : size_(other.size_), index_(other.index_), capacity_(other.capacity_), arr_(other.arr_), end_(other.end_)
     {
         other.size_ = 0;
         other.index_ = 0;
         other.capacity_ = primes[other.index_];
         other.arr_ = new node[powers_of_two[other.index_]];
+        other.end_ = other.arr_ + other.capacity_;
     }
 
     fast_hash_map& operator=(fast_hash_map&& other) noexcept
@@ -86,10 +185,12 @@ public:
             index_ = other.index_;
             capacity_ = other.capacity_;
             arr_ = other.arr_;
+            end_ = other.end_;
             other.size_ = 0;
             other.index_ = 0;
             other.capacity_ = primes[other.index_];
             other.arr_ = new node[powers_of_two[other.index_]];
+            other.end_ = other.arr_ + other.capacity_;
         }
         return *this;
     }
@@ -126,6 +227,12 @@ public:
         return arr_[index].status == node::OCCUPIED;
     }
 
+    Iterator find(const Key& key)
+    {
+        int index = get_index(key);
+        return arr_[index].status == node::OCCUPIED ? Iterator(arr_ + index, this) : Iterator(end_, this);
+    }
+
     Value& operator[](const Key& key)
     {
         int index = get_index(key);
@@ -158,11 +265,28 @@ public:
         index_ = 0;
         capacity_ = primes[index_];
         arr_ = new node[powers_of_two[index_]]{};
+        end_ = arr_ + capacity_;
     }
 
-    ~fast_hash_map()
+    Iterator begin()
     {
-        delete[] arr_;
+        if (size_ == 0)
+            return Iterator(end_, this);
+
+        node* it = arr_;
+        while (it != end_)
+        {
+            if (it->status == node::OCCUPIED)
+                return Iterator(it, this);
+
+            ++it;
+        }
+        return Iterator(end_, this);
+    }
+
+    Iterator end()
+    {
+        return Iterator(end_, this);
     }
 
     int size() const
@@ -197,13 +321,9 @@ public:
         return !(*this == other);
     }
 
-    void print() const
+    ~fast_hash_map()
     {
-        for (int i = 0; i < capacity_; ++i)
-        {
-            if (arr_[i].status == node::OCCUPIED)
-                std::cout << arr_[i].element_.first << " " << arr_[i].element_.second << std::endl;
-        }
+        delete[] arr_;
     }
 
 private:
@@ -211,9 +331,9 @@ private:
     int index_;
     int capacity_;
     node* arr_;
+    node* end_;
     Hash hasher_;
 
-    // линейное пробирование
     int get_index(const Key& key) const
     {
         int index = hasher_(key) % capacity_;
@@ -227,43 +347,6 @@ private:
         }
         return index;
     }
-
-    // квадратичное пробирование
-    //int get_index(const Key& key) const
-    //{
-    //    int index = hasher_(key) % capacity_;
-    //    int i = 0; // Счетчик для квадратичного пробирования
-
-    //    while (arr_[index].status != node::FREE)
-    //    {
-    //        if (arr_[index].status == node::OCCUPIED && arr_[index].element_.first == key)
-    //            return index;
-    // 
-    //        i++;
-    //        index = (index + i * i) % capacity_;
-    //    }
-    //    return index;
-    //}
-
-    // двойное хэширование
-   /* int get_index(const Key& key) const
-    {
-        int index1 = hasher_(key) % capacity_;
-        int index2 = 1 + (hasher_(key) % (capacity_ - 1));
-
-        int index = index1;
-        int i = 0;
-
-        while (arr_[index].status != node::FREE)
-        {
-            if (arr_[index].status == node::OCCUPIED && arr_[index].element_.first == key)
-                return index;
-
-            i++;
-            index = (index1 + i * index2) % capacity_;
-        }
-        return index;
-    }*/
 
     bool check_capacity()
     {
