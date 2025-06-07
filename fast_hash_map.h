@@ -61,7 +61,7 @@ class fast_hash_map
 
             do
             {
-                --node;
+                --node_;
             } while (node_ != arr_ && node_->status != node::OCCUPIED);
 
             if (node_->status != node::OCCUPIED)
